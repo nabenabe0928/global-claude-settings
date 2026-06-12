@@ -1,4 +1,7 @@
 {
+    "cleanupPeriodDays": 30,
+    "model": "claude-opus-4-6",
+    "theme": "dark",
     "defaultMode": "acceptEdits",
     "effortLevel": "xhigh",
     "statusLine": {
