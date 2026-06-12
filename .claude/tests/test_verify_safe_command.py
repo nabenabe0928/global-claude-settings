@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
+import subprocess
 
 import pytest
 
-HOOK_SCRIPT = Path(__file__).resolve().parents[3] / ".claude" / "hooks" / "verify-safe-command.sh"
+
+HOOK_SCRIPT = Path(__file__).resolve().parents[1] / "hooks" / "verify-safe-command.sh"
 
 
 def _run(command: str) -> subprocess.CompletedProcess[str]:

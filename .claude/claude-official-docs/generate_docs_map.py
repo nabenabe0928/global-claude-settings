@@ -1,9 +1,10 @@
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 
 from titlecase import titlecase
 
-DOCS_DIR = ".claude/claude-official-docs"
+DOCS_DIR = str(Path(__file__).resolve().parent)
 
 
 def ensure_accessed_frontmatter(filepath: str) -> None:
