@@ -1,0 +1,103 @@
+{
+    "defaultMode": "acceptEdits",
+    "effortLevel": "xhigh",
+    "statusLine": {
+        "type": "command",
+        "command": "$HOME/.claude/hooks/statusline.sh"
+    },
+    "skillOverrides": {
+        "claude-api": "off"
+    },
+    "permissions": {
+        "allow": [
+            "Bash(*)",
+            "Edit(*)",
+            "Write(*)",
+            "WebFetch(*)",
+            "WebSearch(*)",
+            "Agent(*)",
+            "Read(*)"
+        ],
+        "deny": [
+            "Bash(sudo *)",
+            "Bash(rm -rf *)",
+            "Bash(rm * .git/*)",
+            "Bash(rm * .git)",
+            "Bash(rm * .claude)",
+            "Edit(human_memos/**)",
+            "Write(human_memos/**)",
+            "Read(human_memos/**)",
+            "Edit(local_memos/**)",
+            "Write(local_memos/**)",
+            "Read(local_memos/**)",
+            "Edit(templates/**)",
+            "Write(templates/**)",
+            "Read(templates/**)",
+            "Edit(raw/**)",
+            "Write(raw/**)",
+            "Edit(**/observation.jsonl)",
+            "Write(**/observation.jsonl)",
+            "Edit(**/user-prompts.jsonl)",
+            "Write(**/user-prompts.jsonl)"
+        ]
+    },
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "$HOME/.claude/hooks/verify-safe-command.sh",
+                        "timeout": 10,
+                        "statusMessage": "Verifying command safety..."
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "$HOME/.claude/hooks/observe.sh",
+                        "timeout": 10,
+                        "statusMessage": "Logging tool use..."
+                    }
+                ]
+            }
+        ],
+        "PostToolUse": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "$HOME/.claude/hooks/observe.sh",
+                        "timeout": 10,
+                        "statusMessage": "Logging tool use..."
+                    }
+                ]
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "$HOME/.claude/hooks/notify-done.sh",
+                        "timeout": 3,
+                        "statusMessage": "Sending completion notification..."
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "$HOME/.claude/hooks/collect-user-prompts.sh",
+                        "timeout": 10,
+                        "statusMessage": "Collecting user prompts..."
+                    }
+                ]
+            }
+        ]
+    }
+}
