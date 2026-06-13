@@ -1,4 +1,4 @@
-for target in claude_utils claude-official-docs coding-rules hooks skills settings.json
+for target in claude_utils claude-official-docs coding-rules hooks rules skills settings.json
 do
     cp -r .claude/$target ~/.claude
 done
