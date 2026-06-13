@@ -22,7 +22,7 @@ SUMMARY=$(echo "$INPUT" | jq -r '
 case "$(uname -s)" in
   Darwin)
     afplay /System/Library/Sounds/Glass.aiff &
-    osascript -e 'tell app "System Events" to display dialog "'"$SUMMARY"'" with title "Claude Code"'
+    osascript -e 'display dialog "'"$SUMMARY"'" with title "Claude Code" buttons {"OK"} default button "OK"'
     ;;
   Linux)
     # Terminal bell — reaches the Mac terminal emulator over SSH
