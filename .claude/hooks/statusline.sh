@@ -55,7 +55,7 @@ fi
 model_msg="$model_name $(fmt $context_window_size) ($mode)"
 used_msg="Used: $used_pct% (Session) $rate_limit_5h% (5H), $rate_limit_7d% (7D)"
 git_msg="On $git_ref ($n_files Files, +$n_adds/-$n_dels Lines)"
-token_msg="Tokens: $total_tokens (I/O: $(fmt $in_token)/$(fmt $out_token))"
+token_msg="Tokens: $total_tokens (In: $(fmt $in_token), Out: $(fmt $out_token))"
 session_cost_msg="Session Cost: $(printf "%.2f" $cost_usd) USD"
 cache_msg="Cache: $(fmt $cache_read) (Read) / $(fmt $cache_write) (Write)"
 echo "$model_msg, $used_msg"
