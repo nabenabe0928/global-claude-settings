@@ -22,7 +22,7 @@ IFS=' ' read -r n_files n_adds n_dels \
   '{n_files++; n_adds+=$1; n_dels+=$2} END {print n_files+0, n_adds+0, n_dels+0}'
 )
 
-IFS='|' read -r context_window_size in_token out_token used_pct cache_read cache_write rate_limit_5h rate_limit_7d cost_usd git_worktree thinking effort model_name \
+IFS='|' read -r context_window_size in_token out_token used_pct cache_read cache_write rate_limit_5h rate_limit_7d cost_usd git_worktree thinking effort model_name _session_id \
   < <(echo "$status_data" | jq -r '[
     (.context_window.context_window_size // 0),
     (.context_window.total_input_tokens // 0),
@@ -36,8 +36,32 @@ IFS='|' read -r context_window_size in_token out_token used_pct cache_read cache
     (.workspace.git_worktree // ""),
     (.thinking.enabled // "true"),
     (.effort.level // "high"),
-    (.model.display_name // "Opus")
+    (.model.display_name // "Opus"),
+    (.session_id // "")
   ] | map(tostring) | join("|")')
+
+if [[ -n "$_session_id" && "$_session_id" != "null" ]]; then
+  _session_dir="$HOME/.claude/status-log/.sessions"
+  [[ -d "$_session_dir" ]] || mkdir -p "$_session_dir"
+  _tmp_file="$_session_dir/.$_session_id.tmp"
+  echo "$status_data" | jq -c '{
+    date: (now | strftime("%Y-%m-%d")),
+    session_id: .session_id,
+    model_id: .model.id,
+    project_dir: .workspace.project_dir,
+    version: .version,
+    cost_usd: .cost.total_cost_usd,
+    context_window_size: .context_window.context_window_size,
+    used_token_percentage: .context_window.used_percentage,
+    input_tokens: .context_window.current_usage.input_tokens,
+    output_tokens: .context_window.current_usage.output_tokens,
+    cache_write_tokens: .context_window.current_usage.cache_creation_input_tokens,
+    cache_read_tokens: .context_window.current_usage.cache_read_input_tokens,
+    effort: .effort.level,
+    thinking: .thinking.enabled,
+    agent_name: .agent.name
+  }' > "$_tmp_file" && mv "$_tmp_file" "$_session_dir/$_session_id.json"
+fi
 
 total_tokens=$(fmt "$(echo "$in_token + $out_token" | bc)")
 
@@ -52,10 +76,10 @@ else
   mode="Fast: $effort"
 fi
 
-model_msg="$model_name $(fmt $context_window_size) ($mode)"
-used_msg="Used: $used_pct% (Session) $rate_limit_5h% (5H), $rate_limit_7d% (7D)"
+model_msg="$model_name ($mode)"
+used_msg="$rate_limit_5h% (5H), $rate_limit_7d% (7D)"
 git_msg="On $git_ref ($n_files Files, +$n_adds/-$n_dels Lines)"
-token_msg="Tokens: $total_tokens (In: $(fmt $in_token), Out: $(fmt $out_token))"
+token_msg="Tokens (Used $used_pct%): $total_tokens/$(fmt $context_window_size) (In: $(fmt $in_token), Out: $(fmt $out_token))"
 session_cost_msg="Session Cost: $(printf "%.2f" $cost_usd) USD"
 cache_msg="Cache: $(fmt $cache_read) (Read) / $(fmt $cache_write) (Write)"
 echo "$model_msg, $used_msg"
