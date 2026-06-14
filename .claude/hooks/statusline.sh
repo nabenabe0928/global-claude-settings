@@ -65,6 +65,21 @@ fi
 
 total_tokens=$(fmt "$(echo "$in_token + $out_token" | bc)")
 
+_today=$(date -u +%Y-%m-%d)
+_summary_file="$HOME/.claude/status-log/${_today:0:7}/summary.json"
+if [[ -f "$_summary_file" ]]; then
+  IFS='|' read -r _daily_cost _monthly_cost \
+    < <(jq -r --arg day "${_today:8:2}" '[
+      (.[$day] // 0),
+      ([.[] | numbers] | add // 0)
+    ] | map(tostring) | join("|")' "$_summary_file")
+else
+  _daily_cost=0
+  _monthly_cost=0
+fi
+_daily_cost=$(echo "$_daily_cost + $cost_usd" | bc)
+_monthly_cost=$(echo "$_monthly_cost + $cost_usd" | bc)
+
 if [[ -n "$git_worktree" ]]
   then git_ref="$git_worktree (from $branch_name)"
 else
@@ -80,8 +95,8 @@ model_msg="$model_name ($mode)"
 used_msg="$rate_limit_5h% (5H), $rate_limit_7d% (7D)"
 git_msg="On $git_ref ($n_files Files, +$n_adds/-$n_dels Lines)"
 token_msg="Tokens (Used $used_pct%): $total_tokens/$(fmt $context_window_size) (In: $(fmt $in_token), Out: $(fmt $out_token))"
-session_cost_msg="Session Cost: $(printf "%.2f" $cost_usd) USD"
+cost_msg="Cost: $(printf '%.2f' "$cost_usd") / $(printf '%.2f' "$_daily_cost") / $(printf '%.2f' "$_monthly_cost") USD (Session/Day/Month)"
 cache_msg="Cache: $(fmt $cache_read) (Read) / $(fmt $cache_write) (Write)"
 echo "$model_msg, $used_msg"
 echo "$token_msg, $cache_msg"
-echo "$git_msg, $session_cost_msg"
+echo "$git_msg, $cost_msg"

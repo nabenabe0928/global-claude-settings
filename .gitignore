@@ -2,3 +2,4 @@
 .ruff_cache/
 **/__pycache__/
 claude_utils/workspace/
+.vscode/

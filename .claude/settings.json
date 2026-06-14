@@ -111,6 +111,18 @@
                     }
                 ]
             }
+        ],
+        "SubagentStop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "$HOME/.claude/hooks/collect-cost.sh",
+                        "timeout": 10,
+                        "statusMessage": "Recording session cost..."
+                    }
+                ]
+            }
         ]
     }
 }
