@@ -67,3 +67,15 @@ Keyed by zero-padded day, values are cumulative USD cost deltas for that day:
 - Each entry is collected by a `Stop` hook (`collect-cost.sh`) that reads the session snapshot and computes cost deltas.
 - Subagent sessions are logged but excluded from the delta/summary computation to avoid double-counting.
 - Old monthly directories (>3 months) are probabilistically compacted: daily JSONL files are replaced with a single `sessions.jsonl` containing the final cost per session.
+
+# Compacted Sessions Schema (`YYYY-MM/sessions.jsonl`)
+
+Each line holds the final cost for one session, deduplicated from all daily JSONL files:
+```json
+{
+  "last-updated": "2026-03-15",
+  "session_id": "session-id",
+  "project_dir": "/path/to/project",
+  "cost_usd": 1.23
+}
+```
