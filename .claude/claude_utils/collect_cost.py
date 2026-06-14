@@ -171,27 +171,36 @@ def main() -> None:
         return
 
     snapshot = _read_session_snapshot(session_id)
+    today = (snapshot or {}).get("date") or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    year_month = today[:7]
+    day = today[8:]
+    month_dir = _STATUS_LOG_DIR / year_month
+
+    if is_subagent:
+        record = {
+            "date": today,
+            "session_id": session_id,
+            "agent_id": data["agent_id"],
+            "agent_type": data.get("agent_type", ""),
+        }
+        _append_to_daily_log(month_dir, day, record)
+        return
+
     if snapshot is None:
         return
 
     current_cost = snapshot.get("cost_usd", 0.0)
-    today = snapshot.get("date") or datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    year_month = today[:7]
-    day = today[8:]
-
-    month_dir = _STATUS_LOG_DIR / year_month
 
     with _flock(_LOCK_FILE):
-        if not is_subagent:
-            tracker = _load_tracker()
-            delta = _compute_delta(tracker, session_id, current_cost)
+        tracker = _load_tracker()
+        delta = _compute_delta(tracker, session_id, current_cost)
 
-            summary = _load_summary(month_dir)
-            summary[day] = round(summary.get(day, 0.0) + delta, 6)
-            _save_summary(month_dir, summary)
+        summary = _load_summary(month_dir)
+        summary[day] = round(summary.get(day, 0.0) + delta, 6)
+        _save_summary(month_dir, summary)
 
-            tracker[session_id] = {"last_cost": current_cost, "last_date": today}
-            _save_tracker(tracker)
+        tracker[session_id] = {"last_cost": current_cost, "last_date": today}
+        _save_tracker(tracker)
 
         _append_to_daily_log(month_dir, day, snapshot)
 

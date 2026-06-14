@@ -52,7 +52,20 @@ Written atomically by `statusline.sh` on every status update:
 
 # Daily Log Schema (`YYYY-MM/DD.jsonl`)
 
-Each line is a session snapshot (same schema as above), appended by `collect_cost.py` on every Stop hook invocation. Multiple entries per session are expected — the last entry holds the final cost.
+Each line is appended by `collect_cost.py`. There are two record types:
+
+**Session snapshot** (from Stop hook) — same schema as the session snapshot above. Multiple entries per session are expected; the last entry holds the final cost.
+
+**Subagent record** (from SubagentStop hook) — lightweight, no cost/token data:
+```json
+{
+  "date": "2026-06-14",
+  "session_id": "parent-session-id",
+  "agent_id": "agent-abc123",
+  "agent_type": "general-purpose"
+}
+```
+Lines with `agent_id` are subagent records; lines without are session snapshots.
 
 # Summary Schema (`YYYY-MM/summary.json`)
 

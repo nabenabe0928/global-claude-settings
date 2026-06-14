@@ -282,7 +282,12 @@ class TestMain:
         sessions_dir = _patch_cost / ".sessions"
         _write_snapshot(sessions_dir, "s1", cost_usd=1.0, date="2026-06-14")
         _make_stdin(
-            {"session_id": "s1", "agent_id": "agent-1", "hook_event_name": "Stop"},
+            {
+                "session_id": "s1",
+                "agent_id": "agent-1",
+                "agent_type": "general-purpose",
+                "hook_event_name": "SubagentStop",
+            },
             monkeypatch,
         )
         cc.main()
@@ -290,7 +295,12 @@ class TestMain:
         month_dir = _patch_cost / "2026-06"
         lines = (month_dir / "14.jsonl").read_text().strip().splitlines()
         assert len(lines) == 1
-        assert json.loads(lines[0])["cost_usd"] == 1.0
+        record = json.loads(lines[0])
+        assert record["agent_id"] == "agent-1"
+        assert record["agent_type"] == "general-purpose"
+        assert record["session_id"] == "s1"
+        assert record["date"] == "2026-06-14"
+        assert "cost_usd" not in record
 
         assert cc._load_summary(month_dir) == {}
         assert cc._load_tracker() == {}
@@ -303,9 +313,9 @@ class TestMain:
         _make_stdin({"session_id": "s1"}, monkeypatch)
         cc.main()
 
-        _write_snapshot(sessions_dir, "s2", cost_usd=0.5, date="2026-06-14")
+        _write_snapshot(sessions_dir, "s1", cost_usd=0.5, date="2026-06-14")
         _make_stdin(
-            {"session_id": "s2", "agent_id": "agent-1"},
+            {"session_id": "s1", "agent_id": "agent-1", "agent_type": "Explore"},
             monkeypatch,
         )
         cc.main()
@@ -315,6 +325,8 @@ class TestMain:
 
         lines = (_patch_cost / "2026-06" / "14.jsonl").read_text().strip().splitlines()
         assert len(lines) == 2
+        assert "agent_id" not in json.loads(lines[0])
+        assert json.loads(lines[1])["agent_id"] == "agent-1"
 
     def test_empty_agent_id_not_filtered(self, _patch_cost, monkeypatch):
         _make_stdin(
