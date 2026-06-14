@@ -67,6 +67,7 @@ total_tokens=$(fmt "$(echo "$in_token + $out_token" | bc)")
 
 _today=$(date -u +%Y-%m-%d)
 _summary_file="$HOME/.claude/status-log/${_today:0:7}/summary.json"
+_tracker_file="$HOME/.claude/status-log/.session-tracker.json"
 if [[ -f "$_summary_file" ]]; then
   IFS='|' read -r _daily_cost _monthly_cost \
     < <(jq -r --arg day "${_today:8:2}" '[
@@ -77,8 +78,15 @@ else
   _daily_cost=0
   _monthly_cost=0
 fi
-_daily_cost=$(echo "$_daily_cost + $cost_usd" | bc)
-_monthly_cost=$(echo "$_monthly_cost + $cost_usd" | bc)
+# Add the unrecorded portion of the current session's cost.
+# The tracker stores the last-recorded cost; the difference is the unrecorded delta.
+_recorded=0
+if [[ -n "$_session_id" && "$_session_id" != "null" && -f "$_tracker_file" ]]; then
+  _recorded=$(jq -r --arg sid "$_session_id" '.[$sid].last_cost // 0' "$_tracker_file")
+fi
+_unrecorded=$(echo "$cost_usd - $_recorded" | bc)
+_daily_cost=$(echo "$_daily_cost + $_unrecorded" | bc)
+_monthly_cost=$(echo "$_monthly_cost + $_unrecorded" | bc)
 
 if [[ -n "$git_worktree" ]]
   then git_ref="$git_worktree (from $branch_name)"
