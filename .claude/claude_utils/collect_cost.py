@@ -86,6 +86,7 @@ def _compute_delta(tracker: dict, session_id: str, current_cost: float) -> float
 
 
 def _append_to_daily_log(month_dir: Path, day: str, record: dict) -> None:
+    # Append-only: records are ordered by write time (chronological).
     month_dir.mkdir(parents=True, exist_ok=True)
     path = month_dir / f"{day}.jsonl"
     line = json.dumps(record, separators=(",", ":")) + "\n"
@@ -95,6 +96,10 @@ def _append_to_daily_log(month_dir: Path, day: str, record: dict) -> None:
 
 def _cleanup_month(month_dir: Path) -> None:
     sessions: dict[str, dict] = {}
+    # Files are processed in date order (01.jsonl, 02.jsonl, …) and records
+    # within each file are append-ordered, so later entries for the same
+    # session always carry the most recent cost. Overwriting by session_id
+    # is intentional — it keeps the final snapshot per session.
     for jsonl_file in sorted(month_dir.glob("[0-9][0-9].jsonl")):
         for line in jsonl_file.read_text().splitlines():
             if not line.strip():
@@ -132,16 +137,12 @@ def _maybe_cleanup() -> None:
     cutoff_month = cutoff_date[:7]
 
     with _flock(_LOCK_FILE):
-        for month_dir in sorted(
-            _STATUS_LOG_DIR.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]")
-        ):
+        for month_dir in sorted(_STATUS_LOG_DIR.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]")):
             if month_dir.name >= cutoff_month:
                 continue
             _cleanup_month(month_dir)
         tracker = _load_tracker()
-        pruned = {
-            k: v for k, v in tracker.items() if v.get("last_date", "") >= cutoff_date
-        }
+        pruned = {k: v for k, v in tracker.items() if v.get("last_date", "") >= cutoff_date}
         if len(pruned) < len(tracker):
             _save_tracker(pruned)
 
@@ -163,8 +164,7 @@ def main() -> None:
     except (json.JSONDecodeError, ValueError):
         return
 
-    if data.get("agent_id"):
-        return
+    is_subagent = bool(data.get("agent_id"))
 
     session_id = data.get("session_id", "")
     if not session_id:
@@ -182,15 +182,16 @@ def main() -> None:
     month_dir = _STATUS_LOG_DIR / year_month
 
     with _flock(_LOCK_FILE):
-        tracker = _load_tracker()
-        delta = _compute_delta(tracker, session_id, current_cost)
+        if not is_subagent:
+            tracker = _load_tracker()
+            delta = _compute_delta(tracker, session_id, current_cost)
 
-        summary = _load_summary(month_dir)
-        summary[day] = round(summary.get(day, 0.0) + delta, 6)
-        _save_summary(month_dir, summary)
+            summary = _load_summary(month_dir)
+            summary[day] = round(summary.get(day, 0.0) + delta, 6)
+            _save_summary(month_dir, summary)
 
-        tracker[session_id] = {"last_cost": current_cost, "last_date": today}
-        _save_tracker(tracker)
+            tracker[session_id] = {"last_cost": current_cost, "last_date": today}
+            _save_tracker(tracker)
 
         _append_to_daily_log(month_dir, day, snapshot)
 

@@ -137,9 +137,7 @@ class TestParseTranscript:
         _write_transcript(
             transcript,
             [
-                _make_user_record(
-                    "hello", session="s1", timestamp="2026-06-02T12:00:00Z"
-                ),
+                _make_user_record("hello", session="s1", timestamp="2026-06-02T12:00:00Z"),
             ],
         )
         records, _ = cup._parse_transcript(str(transcript), 0)

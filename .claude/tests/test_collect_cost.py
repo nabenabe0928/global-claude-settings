@@ -180,9 +180,7 @@ class TestCleanupMonth:
         r1 = _make_snapshot(session_id="s1", cost_usd=0.3, date="2026-03-01")
         r2 = _make_snapshot(session_id="s1", cost_usd=0.8, date="2026-03-02")
         r3 = _make_snapshot(session_id="s2", cost_usd=0.2, date="2026-03-01")
-        (month_dir / "01.jsonl").write_text(
-            json.dumps(r1) + "\n" + json.dumps(r3) + "\n"
-        )
+        (month_dir / "01.jsonl").write_text(json.dumps(r1) + "\n" + json.dumps(r3) + "\n")
         (month_dir / "02.jsonl").write_text(json.dumps(r2) + "\n")
 
         cc._cleanup_month(month_dir)
@@ -191,9 +189,7 @@ class TestCleanupMonth:
         assert not (month_dir / "02.jsonl").exists()
         sessions_file = month_dir / "sessions.jsonl"
         assert sessions_file.exists()
-        entries = [
-            json.loads(line) for line in sessions_file.read_text().strip().splitlines()
-        ]
+        entries = [json.loads(line) for line in sessions_file.read_text().strip().splitlines()]
         assert len(entries) == 2
         by_sid = {e["session_id"]: e for e in entries}
         assert by_sid["s1"]["cost_usd"] == 0.8
@@ -281,16 +277,44 @@ class TestMain:
         _make_stdin("not json", monkeypatch)
         cc.main()
 
-    def test_subagent_filtered(self, _patch_cost, monkeypatch):
+    def test_subagent_logged_without_cost_tracking(self, _patch_cost, monkeypatch):
+        monkeypatch.setattr("claude_utils.collect_cost.random.random", lambda: 1.0)
+        sessions_dir = _patch_cost / ".sessions"
+        _write_snapshot(sessions_dir, "s1", cost_usd=1.0, date="2026-06-14")
         _make_stdin(
             {"session_id": "s1", "agent_id": "agent-1", "hook_event_name": "Stop"},
             monkeypatch,
         )
-        sessions_dir = _patch_cost / ".sessions"
-        _write_snapshot(sessions_dir, "s1", cost_usd=1.0)
         cc.main()
+
         month_dir = _patch_cost / "2026-06"
-        assert not month_dir.exists()
+        lines = (month_dir / "14.jsonl").read_text().strip().splitlines()
+        assert len(lines) == 1
+        assert json.loads(lines[0])["cost_usd"] == 1.0
+
+        assert cc._load_summary(month_dir) == {}
+        assert cc._load_tracker() == {}
+
+    def test_subagent_does_not_affect_summary(self, _patch_cost, monkeypatch):
+        monkeypatch.setattr("claude_utils.collect_cost.random.random", lambda: 1.0)
+        sessions_dir = _patch_cost / ".sessions"
+
+        _write_snapshot(sessions_dir, "s1", cost_usd=0.3, date="2026-06-14")
+        _make_stdin({"session_id": "s1"}, monkeypatch)
+        cc.main()
+
+        _write_snapshot(sessions_dir, "s2", cost_usd=0.5, date="2026-06-14")
+        _make_stdin(
+            {"session_id": "s2", "agent_id": "agent-1"},
+            monkeypatch,
+        )
+        cc.main()
+
+        summary = cc._load_summary(_patch_cost / "2026-06")
+        assert summary["14"] == pytest.approx(0.3)
+
+        lines = (_patch_cost / "2026-06" / "14.jsonl").read_text().strip().splitlines()
+        assert len(lines) == 2
 
     def test_empty_agent_id_not_filtered(self, _patch_cost, monkeypatch):
         _make_stdin(

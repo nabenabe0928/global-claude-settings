@@ -10,6 +10,9 @@ dependencies = [
     "titlecase>=2.4.1",
 ]
 
+[tool.ruff]
+line-length = 99
+
 [tool.ruff.lint]
 select = [
     "E",      # pycodestyle errors
